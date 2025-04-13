@@ -1,13 +1,14 @@
 package org.httpServerAyzek.http;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class HttpRes {
     private int statusCode;
     private String reasonPhrase;
     private Map<String, String> headers;
-    private String body;
+    private byte[] body;
 
     public HttpRes() {
         this.statusCode = 200;
@@ -30,12 +31,16 @@ public class HttpRes {
         return this.reasonPhrase;
     }
 
-    public void setBody(String body) {
-        this.body = body;
+    public void setBody(String bodyStr) {
+        if (bodyStr != null) {
+            this.body = bodyStr.getBytes(StandardCharsets.UTF_8);
+        } else {
+            this.body = null;
+        }
     }
 
-    public String getBody() {
-        return this.body;
+    public byte[] getBody() {
+        return body;
     }
 
     public Map<String, String> getHeaders() {
@@ -47,10 +52,14 @@ public class HttpRes {
     }
 
     public void send(OutputStream output) throws IOException {
+        if (reasonPhrase == null) {
+            reasonPhrase = "OK";
+        }
         String statusLine = "HTTP/1.1 " + statusCode + " " + reasonPhrase + "\r\n";
-        byte[] bodyBytes = (body != null ? body.getBytes() : new byte[0]);
-        if (body != null && !headers.containsKey("Content-Length")) {
-            headers.put("Content-Length", String.valueOf(bodyBytes.length));
+
+        byte[] responseBody = (body != null) ? body : new byte[0];
+        if (!headers.containsKey("Content-Length")) {
+            headers.put("Content-Length", String.valueOf(responseBody.length));
         }
         StringBuilder headerBuilder = new StringBuilder();
         headerBuilder.append(statusLine);
@@ -61,8 +70,9 @@ public class HttpRes {
                     .append("\r\n");
         }
         headerBuilder.append("\r\n");
-        output.write(headerBuilder.toString().getBytes());
-        output.write(bodyBytes);
+        output.write(headerBuilder.toString().getBytes(StandardCharsets.UTF_8));
+        output.write(responseBody);
         output.flush();
     }
+
 }
